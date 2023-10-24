@@ -825,8 +825,8 @@ def define_store_constraints(n, sns):
         # We calculate the previous e per period while cycling within a period
         # Normally, we should use groupby, but is broken for multi-index
         # see https://github.com/pydata/xarray/issues/6836
-        ps = n.investment_periods.rename("period")
-        sl = slice(None, None)
+        ps = sns.unique("period")
+        sl = slice(None)
         previous_e_pp = [e.data.sel(snapshot=(p, sl)).roll(snapshot=1) for p in ps]
         previous_e_pp = concat(previous_e_pp, dim="snapshot")
 
