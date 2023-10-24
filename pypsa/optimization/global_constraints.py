@@ -249,9 +249,9 @@ def define_primary_energy_limit(n, sns):
     weightings = n.snapshot_weightings.loc[sns]
     glcs = n.global_constraints.query('type == "primary_energy"')
 
-    if n._multi_invest:
-        period_weighting = n.investment_period_weightings.years[sns.unique("period")]
-        weightings = weightings.mul(period_weighting, level=0, axis=0)
+    # if n._multi_invest:
+    #     period_weighting = n.investment_period_weightings.years[sns.unique("period")]
+    #     weightings = weightings.mul(period_weighting, level=0, axis=0)
 
     for name, glc in glcs.iterrows():
         if isnan(glc.investment_period):
@@ -327,9 +327,9 @@ def define_operational_limit(n, sns):
     weightings = n.snapshot_weightings.loc[sns]
     glcs = n.global_constraints.query('type == "operational_limit"')
 
-    if n._multi_invest:
-        period_weighting = n.investment_period_weightings.years[sns.unique("period")]
-        weightings = weightings.mul(period_weighting, level=0, axis=0)
+    # if n._multi_invest:
+    #     period_weighting = n.investment_period_weightings.years[sns.unique("period")]
+    #     weightings = weightings.mul(period_weighting, level=0, axis=0)
 
     # storage units
     cond = "carrier == @glc.carrier_attribute and not cyclic_state_of_charge"
