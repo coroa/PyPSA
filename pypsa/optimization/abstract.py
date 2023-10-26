@@ -24,6 +24,7 @@ def optimize_transmission_expansion_iteratively(
     min_iterations=1,
     max_iterations=100,
     track_iterations=False,
+    skip_fixed_run=True,
     **kwargs,
 ):
     """
@@ -114,7 +115,7 @@ def optimize_transmission_expansion_iteratively(
             )
             break
 
-        s_nom_prev = n.lines.s_nom_opt.copy() if iteration else n.lines.s_nom.copy()
+        s_nom_prev = n.lines.s_nom_opt.copy() if iteration > 1 else n.lines.s_nom.copy()
         status, termination_condition = n.optimize(snapshots, **kwargs)
         assert status == "ok", (
             f"Optimization failed with status {status}"
@@ -126,33 +127,34 @@ def optimize_transmission_expansion_iteratively(
         diff = msq_diff(n, s_nom_prev)
         iteration += 1
 
-    logger.info("Running last lopf with fixed branches (HVDC links and HVAC lines)")
+    if not skip_fixed_run:
+        logger.info("Running last lopf with fixed branches (HVDC links and HVAC lines)")
 
-    ext_dc_links_b = n.links.p_nom_extendable & (n.links.carrier == "DC")
-    s_nom_orig = n.lines.s_nom.copy()
-    p_nom_orig = n.links.p_nom.copy()
+        ext_dc_links_b = n.links.p_nom_extendable & (n.links.carrier == "DC")
+        s_nom_orig = n.lines.s_nom.copy()
+        p_nom_orig = n.links.p_nom.copy()
 
-    n.lines.loc[ext_i, "s_nom"] = n.lines.loc[ext_i, "s_nom_opt"]
-    n.lines.loc[ext_i, "s_nom_extendable"] = False
+        n.lines.loc[ext_i, "s_nom"] = n.lines.loc[ext_i, "s_nom_opt"]
+        n.lines.loc[ext_i, "s_nom_extendable"] = False
 
-    n.links.loc[ext_dc_links_b, "p_nom"] = n.links.loc[ext_dc_links_b, "p_nom_opt"]
-    n.links.loc[ext_dc_links_b, "p_nom_extendable"] = False
+        n.links.loc[ext_dc_links_b, "p_nom"] = n.links.loc[ext_dc_links_b, "p_nom_opt"]
+        n.links.loc[ext_dc_links_b, "p_nom_extendable"] = False
 
-    n.optimize(snapshots, **kwargs)
+        n.optimize(snapshots, **kwargs)
 
-    n.lines.loc[ext_i, "s_nom"] = s_nom_orig.loc[ext_i]
-    n.lines.loc[ext_i, "s_nom_extendable"] = True
+        n.lines.loc[ext_i, "s_nom"] = s_nom_orig.loc[ext_i]
+        n.lines.loc[ext_i, "s_nom_extendable"] = True
 
-    n.links.loc[ext_dc_links_b, "p_nom"] = p_nom_orig.loc[ext_dc_links_b]
-    n.links.loc[ext_dc_links_b, "p_nom_extendable"] = True
+        n.links.loc[ext_dc_links_b, "p_nom"] = p_nom_orig.loc[ext_dc_links_b]
+        n.links.loc[ext_dc_links_b, "p_nom_extendable"] = True
 
-    ## add costs of additional infrastructure to objective value of last iteration
-    obj_links = (
-        n.links[ext_dc_links_b].eval("capital_cost * (p_nom_opt - p_nom_min)").sum()
-    )
-    obj_lines = n.lines.eval("capital_cost * (s_nom_opt - s_nom_min)").sum()
-    n.objective += obj_links + obj_lines
-    n.objective_constant -= obj_links + obj_lines
+        ## add costs of additional infrastructure to objective value of last iteration
+        obj_links = (
+            n.links[ext_dc_links_b].eval("capital_cost * (p_nom_opt - p_nom_min)").sum()
+        )
+        obj_lines = n.lines.eval("capital_cost * (s_nom_opt - s_nom_min)").sum()
+        n.objective += obj_links + obj_lines
+        n.objective_constant -= obj_links + obj_lines
 
 
 def optimize_security_constrained(
