@@ -408,21 +408,16 @@ def define_transmission_volume_expansion_limit(n, sns):
             if ext_i.empty:
                 continue
 
-            ext_i = ext_i.intersection(n.df(c).query("carrier in @car").index).rename(
-                ext_i.name
-            )
-
-            if ext_i.empty:
-                continue
+            sel = n.df(c)["carrier"].isin(car)
 
             if not isnan(period):
-                ext_i = ext_i[n.get_active_assets(c, period)].rename(ext_i.name)
+                sel &= n.get_active_assets(c, period)
             elif isinstance(sns, pd.MultiIndex):
-                ext_i = ext_i[n.get_active_assets(c, sns.unique("period"))].rename(
-                    ext_i.name
-                )
+                sel &= n.get_active_assets(c, sns.unique("period"))
 
-            length = n.df(c).length.reindex(ext_i)
+            ext_i = ext_i.intersection(sel.index[sel]).rename(ext_i.name)
+
+            length = n.df(c)["length"].reindex(ext_i)
             vars = m[f"{c}-{attr}"].loc[ext_i]
             lhs.append(m.linexpr((length, vars)).sum())
 
@@ -467,16 +462,14 @@ def define_transmission_expansion_cost_limit(n, sns):
             if ext_i.empty:
                 continue
 
-            ext_i = ext_i.intersection(n.df(c).query("carrier in @car").index).rename(
-                ext_i.name
-            )
+            sel = n.df(c)["carrier"].isin(car)
 
             if not isnan(period):
-                ext_i = ext_i[n.get_active_assets(c, period)].rename(ext_i.name)
+                sel &= n.get_active_assets(c, period)
             elif isinstance(sns, pd.MultiIndex):
-                ext_i = ext_i[n.get_active_assets(c, sns.unique("period"))].rename(
-                    ext_i.name
-                )
+                sel &= n.get_active_assets(c, sns.unique("period"))
+
+            ext_i = ext_i.intersection(sel.index[sel]).rename(ext_i.name)
 
             cost = n.df(c).capital_cost.reindex(ext_i)
             vars = m[f"{c}-{attr}"].loc[ext_i]
